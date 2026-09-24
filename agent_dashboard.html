@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Shift Desk — real-time call center employee dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F8FA; --panel: #FFFFFF; --border: #E4E7EC;
+    --ink: #1A1D24; --ink-dim: #6B7280;
+    --brand: #2F6FED; --brand-dim: #EAF0FE;
+    --good: #16A34A; --good-dim: #E7F7ED;
+    --warn: #D97706; --warn-dim: #FEF3E2;
+    --bad: #DC2626; --bad-dim: #FDECEC;
+    --purple: #7C3AED; --purple-dim: #F0EAFE;
+    --font: 'Inter', sans-serif; --font-mono: 'JetBrains Mono', monospace;
+    box-sizing: border-box; padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#14161B; --panel:#1C1F26; --border:#2A2E37; --ink:#F0F1F4; --ink-dim:#9AA1AE; --brand-dim:#1E2A47; --good-dim:#0F2A1A; --warn-dim:#332107; --bad-dim:#3A1414; --purple-dim:#241B3A; }
+  }
+  :root[data-theme="dark"] { --bg:#14161B; --panel:#1C1F26; --border:#2A2E37; --ink:#F0F1F4; --ink-dim:#9AA1AE; --brand-dim:#1E2A47; --good-dim:#0F2A1A; --warn-dim:#332107; --bad-dim:#3A1414; --purple-dim:#241B3A; }
+  * { box-sizing: border-box; }
+  html { height:100%; }
+  body { margin:0; min-height:100%; background: var(--bg); color: var(--ink); font-family: var(--font); -webkit-font-smoothing:antialiased; }
+  .wrap { max-width: 900px; margin:0 auto; padding: 24px 16px 50px; }
+
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing:0.1em; color: var(--brand); text-transform: uppercase; margin-bottom: 8px; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 6px; }
+  .sub { color: var(--ink-dim); font-size: 14px; line-height:1.55; max-width: 66ch; margin-bottom: 20px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .tab-btn {
+    background: none; border: none; padding: 10px 14px; font-family: var(--font); font-weight: 600; font-size: 13px;
+    color: var(--ink-dim); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+
+  select.emp-select {
+    font-family: var(--font); font-size: 13.5px; font-weight: 600; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin-bottom: 16px;
+  }
+
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .agent-card {
+    background: var(--panel); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px;
+  }
+  .agent-card .ac-name { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+  .agent-card .ac-state-badge {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin-bottom: 10px;
+  }
+  .agent-card .ac-timer { font-family: var(--font-mono); font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+  .agent-card .ac-stats-list { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .agent-card .ac-stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .agent-card .ac-stat-label { font-size: 11px; color: var(--ink-dim); font-weight: 600; flex-shrink: 0; min-width: 100px; }
+  .agent-card .ac-stat-nums { font-size: 11px; color: var(--ink); text-align: right; }
+  .agent-card .ac-stat-nums b { color: var(--ink); }
+  .agent-card .ac-total-line {
+    margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 12px; color: var(--ink-dim);
+  }
+  .agent-card .ac-total-line b { color: var(--brand); }
+  .admin-type-breakdown {
+    margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--border);
+    display: flex; flex-direction: column; gap: 5px; margin-top: -2px;
+  }
+  .admin-type-row .admin-type-label { font-size: 10.5px; color: var(--ink-dim); font-weight: 500; min-width: 90px; }
+  .admin-type-row .ac-stat-nums { font-size: 10.5px; color: var(--ink-dim); }
+  .admin-type-row .ac-stat-nums b { color: var(--ink-dim); }
+
+  .badge-ready { background: var(--good-dim); color: var(--good); }
+  .badge-on_inbound_call, .badge-on_outbound_call { background: var(--brand-dim); color: var(--brand); }
+  .badge-outbound_ready { background: var(--brand-dim); color: var(--brand); }
+  .badge-after_call_work { background: var(--warn-dim); color: var(--warn); }
+  .badge-break, .badge-lunch { background: var(--purple-dim); color: var(--purple); }
+  .badge-administrative { background: var(--warn-dim); color: var(--warn); }
+
+  .controlling-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-dim); margin-bottom: 10px; text-transform: uppercase; }
+
+  /* ---- state panel ---- */
+  .state-panel {
+    border-radius: 14px; padding: 22px; text-align: center; margin-bottom: 16px; border: 2px solid; transition: all 0.3s ease;
+  }
+  .state-panel.ready { background: var(--good-dim); border-color: var(--good); }
+  .state-panel.on_inbound_call, .state-panel.on_outbound_call { background: var(--brand-dim); border-color: var(--brand); }
+  .state-panel.outbound_ready { background: var(--brand-dim); border-color: var(--brand); opacity: 0.85; }
+  .state-panel.after_call_work { background: var(--warn-dim); border-color: var(--warn); }
+  .state-panel.break, .state-panel.lunch { background: var(--purple-dim); border-color: var(--purple); }
+  .state-panel.administrative { background: var(--warn-dim); border-color: var(--warn); }
+  .state-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 6px; }
+  .state-name { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .state-timer { font-family: var(--font-mono); font-size: 32px; font-weight: 700; }
+  .state-subtype { font-size: 13px; color: var(--ink-dim); margin-top: 4px; }
+
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+  .action-btn {
+    font-family: var(--font); font-weight: 600; font-size: 13.5px; padding: 12px 18px; border-radius: 10px;
+    border: none; cursor: pointer; color: #fff;
+  }
+  .action-btn.primary { background: var(--brand); }
+  .action-btn.success { background: var(--good); }
+  .action-btn.warn { background: var(--warn); }
+  .action-btn.purple { background: var(--purple); }
+  .action-btn.neutral { background: var(--ink-dim); }
+  .action-btn:hover { filter: brightness(1.08); }
+
+  .admin-picker { display: none; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px; }
+  .admin-picker select {
+    font-family: var(--font); font-size: 13px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--ink);
+  }
+
+  /* ---- today stats ---- */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px; }
+  .stat-card .sc-label { font-family: var(--font-mono); font-size: 9.5px; color: var(--ink-dim); letter-spacing: 0.04em; margin-bottom: 5px; }
+  .stat-card .sc-value { font-size: 19px; font-weight: 700; }
+  .stat-card .sc-sub { font-size: 10.5px; color: var(--ink-dim); margin-top: 2px; }
+
+  .admin-breakdown { margin-top: 6px; }
+  .admin-breakdown table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .admin-breakdown th, .admin-breakdown td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  .admin-breakdown th { font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim); text-transform: uppercase; }
+
+  /* ---- team report ---- */
+  .range-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .range-chip { font-size: 12.5px; background: var(--panel); border: 1px solid var(--border); color: var(--ink-dim); padding: 7px 14px; border-radius: 20px; cursor: pointer; }
+  .range-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  .team-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .team-table th, .team-table td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .team-table th { font-family: var(--font-mono); font-size: 9.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.02em; }
+  .table-scroll { overflow-x: auto; }
+
+  .narrative-box { background: var(--brand-dim); border-radius: 10px; padding: 16px; margin-top: 16px; font-size: 13.5px; line-height: 1.65; }
+  .narrative-box .nb-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--brand); margin-bottom: 8px; text-transform: uppercase; }
+
+  button.primary-btn {
+    width:100%; background: var(--brand); color:#fff; border:none; border-radius:10px;
+    padding: 13px; font-family: var(--font); font-weight:600; font-size:14px; cursor:pointer;
+  }
+  button.primary-btn:hover:not(:disabled) { filter: brightness(1.08); }
+  button.primary-btn:disabled { opacity:0.5; cursor:wait; }
+  button.secondary-btn {
+    width:100%; background: transparent; color: var(--ink-dim); border:1px solid var(--border); border-radius:10px;
+    padding: 11px; font-family: var(--font); font-weight:600; font-size:13px; cursor:pointer; margin-top: 10px;
+  }
+  button.secondary-btn:hover:not(:disabled) { border-color: var(--bad); color: var(--bad); }
+
+  .progress-log { margin-top: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); line-height: 1.7; display: none; }
+  .empty-note { color: var(--ink-dim); font-size: 13px; text-align: center; padding: 30px 0; }
+
+  footer.credit { text-align:center; margin-top: 30px; font-size:11px; color: var(--ink-dim); opacity:0.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Real-Time Workforce Dashboard</div>
+  <h1>Shift Desk</h1>
+  <p class="sub">Watches a full team of call center employees at once — ready, on a call, after-call work, break, or administrative task — automatically, and rolls it all up into live stats plus daily, weekly, and monthly team reports.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="live">Live Team View</button>
+    <button class="tab-btn" data-tab="team">Team Report</button>
+    <button class="tab-btn" data-tab="seed">Generate Demo History</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-live">
+    <p style="font-size:12.5px; color:var(--ink-dim); margin:0 0 14px;">Each agent works through their own shift automatically — calls, wrap-up, breaks, and admin tasks — on their own timing. This view just observes and updates live; nobody here is driving it.</p>
+    <div class="agent-grid" id="agentGrid"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-team">
+    <div class="range-row" id="rangeRow">
+      <button class="range-chip active" data-range="today">Today</button>
+      <button class="range-chip" data-range="week">This Week</button>
+      <button class="range-chip" data-range="month">This Month</button>
+    </div>
+    <div id="teamReportOutput"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-seed">
+    <div class="panel">
+      <p style="font-size:13px; color:var(--ink-dim); line-height:1.55; margin:0 0 14px;">Backfills realistic shift history for the past 13 days across all 5 team members, so the weekly and monthly reports have real data to show. Today stays live — this doesn't touch today's data.</p>
+      <button class="primary-btn" id="seedBtn">Generate 13 days of team history</button>
+      <button class="secondary-btn" id="clearBtn">Clear all shift data (including today)</button>
+      <div class="progress-log" id="seedLog"></div>
+    </div>
+  </div>
+
+  <footer class="credit">Shift Desk — built with the Claude API</footer>
+</div>
+
+<script>
+/* =========================================================
+   Roster & constants
+   ========================================================= */
+const ROSTER = ['Taylor Brooks', 'Jordan Ellis', 'Morgan Lee', 'Casey Kim', 'Alex Rivera'];
+const ADMIN_TYPES = ['Letter Review', 'Autopay Setup', 'Damaged Item Review', 'Refund Processing', 'Other'];
+function slug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+let agentSnapshots = {}; // name -> { state, subtype, stateStartMs, simDurationSec, stats }
+
+/* =========================================================
+   db capability
+   ========================================================= */
+let dbRef = null;
+async function getDb() {
+  if (dbRef) return dbRef;
+  dbRef = await claude.use('db');
+  return dbRef;
+}
+async function sampleText(prompt) {
+  const sample = await claude.use('sample');
+  if (!sample) throw { code: 'not_available' };
+  const res = await sample(prompt, { modelTier: 'default' });
+  return (res && res.text) || '';
+}
+
+/* =========================================================
+   State machine + autonomous per-agent simulation
+   ========================================================= */
+const STATE_LABELS = {
+  ready: 'Ready', on_inbound_call: 'On Inbound Call', outbound_ready: 'Outbound Calling',
+  on_outbound_call: 'On Outbound Call', after_call_work: 'After Call Work',
+  break: 'On Break', lunch: 'On Lunch', administrative: 'Administrative'
+};
+// Which displayed states get logged as a stat-bearing session, and under what name.
+// "ready" and "outbound_ready" are transient/waiting states, not logged.
+const LOGGABLE = {
+  on_inbound_call: 'inbound_call', on_outbound_call: 'outbound_call',
+  after_call_work: 'after_call_work', break: 'break', lunch: 'lunch', administrative: 'administrative'
+};
+
+const SIM_SPEED = 18; // real seconds = simulated seconds / SIM_SPEED — keeps the wallboard visibly alive
+let timerInterval = null;
+
+function computeStatsFromSessions(sessions) {
+  const stats = {
+    inbound: { count: 0, totalSec: 0 }, outbound: { count: 0, totalSec: 0 },
+    acw: { count: 0, totalSec: 0 }, break: { count: 0, totalSec: 0 }, lunch: { count: 0, totalSec: 0 },
+    admin: { count: 0, totalSec: 0, byType: {} }
+  };
+  sessions.forEach(s => {
+    if (s.state === 'inbound_call') { stats.inbound.count++; stats.inbound.totalSec += s.durationSec; }
+    else if (s.state === 'outbound_call') { stats.outbound.count++; stats.outbound.totalSec += s.durationSec; }
+    else if (s.state === 'after_call_work') { stats.acw.count++; stats.acw.totalSec += s.durationSec; }
+    else if (s.state === 'break') { stats.break.count++; stats.break.totalSec += s.durationSec; }
+    else if (s.state === 'lunch') { stats.lunch.count++; stats.lunch.totalSec += s.durationSec; }
+    else if (s.state === 'administrative') {
+      stats.admin.count++; stats.admin.totalSec += s.durationSec;
+      const t = s.subtype || 'Other';
+      if (!stats.admin.byType[t]) stats.admin.byType[t] = { count: 0, totalSec: 0 };
+      stats.admin.byType[t].count++; stats.admin.byType[t].totalSec += s.durationSec;
+    }
+  });
+  return stats;
+}
+function fmtMin(sec) { return Math.round(sec / 60) + 'm'; }
+function fmtAvg(totalSec, count) { return count ? Math.round(totalSec / count / 60 * 10) / 10 + 'm avg' : '\u2014'; }
+function fmtDuration(sec) {
+  if (!sec) return '0m';
+  const h = Math.floor(sec / 3600);
+  const m = Math.round((sec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+function fmtAvgMin(totalSec, count) { return count ? (Math.round(totalSec / count / 60 * 10) / 10) + 'm' : '\u2014'; }
+function emptyStats() {
+  return { inbound: {count:0,totalSec:0}, outbound: {count:0,totalSec:0}, acw: {count:0,totalSec:0},
+    break: {count:0,totalSec:0}, lunch: {count:0,totalSec:0}, admin: {count:0,totalSec:0,byType:{}} };
+}
+
+async function saveStatus(name, state, subtype, stateStartMs) {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db.collection('status').doc(slug(name)).set({ employeeName: name, state, subtype: subtype || null, stateStartMs });
+  } catch (err) { console.error('saveStatus failed', err); }
+}
+
+async function logSessionFor(name, loggedState, subtype, durationSec) {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const date = todayStr();
+    const ref = db.collection('shifts').doc(`${slug(name)}_${date}`);
+    let existing;
+    try { existing = await ref.get(); } catch (e) { existing = null; }
+    const sessions = (existing && existing.exists && existing.data().sessions) || [];
+    const endMs = Date.now();
+    sessions.push({ state: loggedState, subtype: subtype || null, startMs: endMs - durationSec * 1000, endMs, durationSec });
+    await ref.set({ employeeName: name, date, sessions });
+  } catch (err) { console.error('logSessionFor failed', err); }
+}
+
+/* ---- transition graph: what state follows, and how long (simulated seconds) it lasts ---- */
+function pickTransition(fromState) {
+  if (fromState === 'on_inbound_call') return { state: 'after_call_work', simDurationSec: randInt(30, 150) };
+  if (fromState === 'on_outbound_call') return { state: 'after_call_work', simDurationSec: randInt(30, 150) };
+  if (fromState === 'outbound_ready') return { state: 'on_outbound_call', simDurationSec: randInt(90, 420) };
+  if (fromState === 'after_call_work') return { state: 'ready', simDurationSec: randInt(5, 40) };
+  if (fromState === 'break') return { state: 'ready', simDurationSec: randInt(5, 40) };
+  if (fromState === 'lunch') return { state: 'ready', simDurationSec: randInt(5, 40) };
+  if (fromState === 'administrative') return { state: 'ready', simDurationSec: randInt(5, 40) };
+  // from 'ready' (or initial/unknown) — decide what happens next
+  const r = Math.random();
+  if (r < 0.42) return { state: 'on_inbound_call', simDurationSec: randInt(120, 540) };
+  if (r < 0.62) return { state: 'outbound_ready', simDurationSec: randInt(3, 8) };
+  if (r < 0.82) return { state: 'administrative', subtype: pick(ADMIN_TYPES), simDurationSec: randInt(300, 900) };
+  if (r < 0.92) return { state: 'break', simDurationSec: 900 };
+  return { state: 'lunch', simDurationSec: 1800 };
+}
+
+let simTimers = {};
+
+function scheduleNext(name) {
+  const prev = agentSnapshots[name];
+  const next = pickTransition(prev ? prev.state : 'ready');
+  const now = Date.now();
+
+  if (prev && prev.state && LOGGABLE[prev.state]) {
+    logSessionFor(name, LOGGABLE[prev.state], prev.subtype, prev.simDurationSec || 1);
+  }
+
+  agentSnapshots[name] = {
+    employeeName: name, state: next.state, subtype: next.subtype || null,
+    stateStartMs: now, simDurationSec: next.simDurationSec,
+    stats: (prev && prev.stats) || emptyStats()
+  };
+  saveStatus(name, next.state, next.subtype, now);
+  renderAgentGrid();
+
+  const realDelayMs = Math.max(400, (next.simDurationSec / SIM_SPEED) * 1000);
+  simTimers[name] = setTimeout(() => scheduleNext(name), realDelayMs);
+}
+
+function initSimulation() {
+  ROSTER.forEach((name, i) => {
+    agentSnapshots[name] = { employeeName: name, state: 'ready', subtype: null, stateStartMs: Date.now(), simDurationSec: 0, stats: emptyStats() };
+    setTimeout(() => scheduleNext(name), randInt(300, 3000) + i * 150); // stagger so agents don't move in lockstep
+  });
+  renderAgentGrid();
+}
+
+async function refreshStatsOnly() {
+  const db = await getDb();
+  if (!db) return;
+  for (const name of ROSTER) {
+    try {
+      const doc = await db.collection('shifts').doc(`${slug(name)}_${todayStr()}`).get();
+      const sessions = (doc.exists && doc.data().sessions) || [];
+      if (!agentSnapshots[name]) agentSnapshots[name] = { employeeName: name, state: 'ready', stateStartMs: Date.now() };
+      agentSnapshots[name].stats = computeStatsFromSessions(sessions);
+    } catch (e) {}
+  }
+  renderAgentGrid();
+}
+
+function updateTimer() {
+  document.querySelectorAll('.agent-card').forEach(card => {
+    const name = card.dataset.name;
+    const snap = agentSnapshots[name];
+    if (!snap) return;
+    const elSec = Math.floor((Date.now() - snap.stateStartMs) / 1000);
+    const em = Math.floor(elSec / 60).toString().padStart(2, '0');
+    const es = (elSec % 60).toString().padStart(2, '0');
+    const timerEl = card.querySelector('.ac-timer');
+    if (timerEl) timerEl.textContent = `${em}:${es}`;
+  });
+}
+if (!timerInterval) timerInterval = setInterval(updateTimer, 1000);
+
+function renderAgentGrid() {
+  const grid = document.getElementById('agentGrid');
+  grid.innerHTML = ROSTER.map(name => {
+    const snap = agentSnapshots[name];
+    if (!snap) return '';
+    const s = snap.stats || emptyStats();
+    const totalLoggedSec = s.inbound.totalSec + s.outbound.totalSec + s.acw.totalSec + s.break.totalSec + s.lunch.totalSec + s.admin.totalSec;
+    return `
+      <div class="agent-card" data-name="${escapeHtml(name)}">
+        <div class="ac-name">${escapeHtml(name)}</div>
+        <div class="ac-state-badge badge-${snap.state}">${escapeHtml(STATE_LABELS[snap.state] || snap.state)}${snap.subtype ? ' \u2014 ' + escapeHtml(snap.subtype) : ''}</div>
+        <div class="ac-timer">00:00</div>
+        <div class="ac-stats-list">
+          <div class="ac-stat-row">
+            <div class="ac-stat-label">Inbound Calls</div>
+            <div class="ac-stat-nums"><b>${s.inbound.count}</b> taken &middot; ${fmtAvgMin(s.inbound.totalSec, s.inbound.count)} avg handle &middot; ${fmtDuration(s.inbound.totalSec)} total</div>
+          </div>
+          <div class="ac-stat-row">
+            <div class="ac-stat-label">Outbound Calls</div>
+            <div class="ac-stat-nums"><b>${s.outbound.count}</b> made &middot; ${fmtAvgMin(s.outbound.totalSec, s.outbound.count)} avg handle &middot; ${fmtDuration(s.outbound.totalSec)} total</div>
+          </div>
+          <div class="ac-stat-row">
+            <div class="ac-stat-label">After-Call Work</div>
+            <div class="ac-stat-nums"><b>${s.acw.count}</b> sessions &middot; ${fmtAvgMin(s.acw.totalSec, s.acw.count)} avg &middot; ${fmtDuration(s.acw.totalSec)} total</div>
+          </div>
+          <div class="ac-stat-row">
+            <div class="ac-stat-label">Admin Tasks</div>
+            <div class="ac-stat-nums"><b>${s.admin.count}</b> completed &middot; ${fmtAvgMin(s.admin.totalSec, s.admin.count)} avg &middot; ${fmtDuration(s.admin.totalSec)} total</div>
+          </div>
+          <div class="ac-stat-row">
+            <div class="ac-stat-label">Break / Lunch</div>
+            <div class="ac-stat-nums">${fmtDuration(s.break.totalSec + s.lunch.totalSec)} total</div>
+          </div>
+        </div>
+        <div class="ac-total-line">Total time logged today: <b>${fmtDuration(totalLoggedSec)}</b></div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* =========================================================
+   Tabs
+   ========================================================= */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'team') generateTeamReport(currentRange);
+  });
+});
+
+/* =========================================================
+   Team report
+   ========================================================= */
+let currentRange = 'today';
+document.querySelectorAll('.range-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.range-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentRange = chip.dataset.range;
+    generateTeamReport(currentRange);
+  });
+});
+
+function dateRangeList(range) {
+  const days = range === 'today' ? 1 : range === 'week' ? 7 : 30;
+  const list = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    list.push(d.toISOString().slice(0, 10));
+  }
+  return list;
+}
+
+async function generateTeamReport(range) {
+  const out = document.getElementById('teamReportOutput');
+  out.innerHTML = '<div class="empty-note">Loading team data...</div>';
+  try {
+    const db = await getDb();
+    if (!db) throw { code: 'not_available' };
+    const dates = dateRangeList(range);
+
+    const allSessions = []; // {employeeName, ...session}
+    for (const name of ROSTER) {
+      for (const date of dates) {
+        try {
+          const doc = await db.collection('shifts').doc(`${slug(name)}_${date}`).get();
+          if (doc.exists) {
+            (doc.data().sessions || []).forEach(s => allSessions.push({ employeeName: name, ...s }));
+          }
+        } catch (e) { /* no data for this day, skip */ }
+      }
+    }
+
+    if (!allSessions.length) {
+      out.innerHTML = '<div class="empty-note">No data for this range yet. Try "Generate Demo History" or use the live dashboard.</div>';
+      return;
+    }
+
+    const byAgent = {};
+    ROSTER.forEach(name => { byAgent[name] = computeStatsFromSessions(allSessions.filter(s => s.employeeName === name)); });
+
+    out.innerHTML = `
+      <div class="agent-grid" id="reportCardGrid"></div>
+      <div class="panel">
+        <div style="font-weight:600; font-size:13.5px; margin-bottom:10px;">Admin task breakdown — whole team</div>
+        <div class="admin-breakdown" id="teamAdminBreakdown"></div>
+      </div>
+      <div class="narrative-box" id="teamNarrative"><div class="nb-label">Team Insight</div>Generating summary...</div>
+    `;
+
+    const rangeLabel = range === 'today' ? "Today's totals" : range === 'week' ? 'This week\u2019s totals' : 'This month\u2019s totals';
+    document.getElementById('reportCardGrid').innerHTML = ROSTER.map(name => {
+      const s = byAgent[name];
+      const totalLoggedSec = s.inbound.totalSec + s.outbound.totalSec + s.acw.totalSec + s.break.totalSec + s.lunch.totalSec + s.admin.totalSec;
+      return `
+        <div class="agent-card">
+          <div class="ac-name">${escapeHtml(name)}</div>
+          <div class="ac-state-badge badge-ready" style="background:var(--brand-dim); color:var(--brand);">${escapeHtml(rangeLabel)}</div>
+          <div class="ac-stats-list">
+            <div class="ac-stat-row">
+              <div class="ac-stat-label">Inbound Calls</div>
+              <div class="ac-stat-nums"><b>${s.inbound.count}</b> taken &middot; ${fmtAvgMin(s.inbound.totalSec, s.inbound.count)} avg handle &middot; ${fmtDuration(s.inbound.totalSec)} total</div>
+            </div>
+            <div class="ac-stat-row">
+              <div class="ac-stat-label">Outbound Calls</div>
+              <div class="ac-stat-nums"><b>${s.outbound.count}</b> made &middot; ${fmtAvgMin(s.outbound.totalSec, s.outbound.count)} avg handle &middot; ${fmtDuration(s.outbound.totalSec)} total</div>
+            </div>
+            <div class="ac-stat-row">
+              <div class="ac-stat-label">After-Call Work</div>
+              <div class="ac-stat-nums"><b>${s.acw.count}</b> sessions &middot; ${fmtAvgMin(s.acw.totalSec, s.acw.count)} avg &middot; ${fmtDuration(s.acw.totalSec)} total</div>
+            </div>
+            <div class="ac-stat-row">
+              <div class="ac-stat-label">Admin Tasks</div>
+              <div class="ac-stat-nums"><b>${s.admin.count}</b> completed &middot; ${fmtAvgMin(s.admin.totalSec, s.admin.count)} avg &middot; ${fmtDuration(s.admin.totalSec)} total</div>
+            </div>
+            ${Object.keys(s.admin.byType).length ? `
+            <div class="admin-type-breakdown">
+              ${ADMIN_TYPES.filter(t => s.admin.byType[t]).map(t => `
+                <div class="ac-stat-row admin-type-row">
+                  <div class="ac-stat-label admin-type-label">${escapeHtml(t)}</div>
+                  <div class="ac-stat-nums"><b>${s.admin.byType[t].count}</b> &middot; ${fmtAvgMin(s.admin.byType[t].totalSec, s.admin.byType[t].count)} avg &middot; ${fmtDuration(s.admin.byType[t].totalSec)} total</div>
+                </div>
+              `).join('')}
+            </div>` : ''}
+            <div class="ac-stat-row">
+              <div class="ac-stat-label">Break / Lunch</div>
+              <div class="ac-stat-nums">${fmtDuration(s.break.totalSec + s.lunch.totalSec)} total</div>
+            </div>
+          </div>
+          <div class="ac-total-line">Total time logged: <b>${fmtDuration(totalLoggedSec)}</b></div>
+        </div>
+      `;
+    }).join('');
+
+    const teamAdmin = {};
+    ADMIN_TYPES.forEach(t => teamAdmin[t] = { count: 0, totalSec: 0 });
+    allSessions.filter(s => s.state === 'administrative').forEach(s => {
+      const t = s.subtype || 'Other';
+      if (!teamAdmin[t]) teamAdmin[t] = { count: 0, totalSec: 0 };
+      teamAdmin[t].count++; teamAdmin[t].totalSec += s.durationSec;
+    });
+    document.getElementById('teamAdminBreakdown').innerHTML = `
+      <table>
+        <thead><tr><th>Task Type</th><th>Count</th><th>Avg Time</th></tr></thead>
+        <tbody>${Object.keys(teamAdmin).filter(t => teamAdmin[t].count > 0).map(t =>
+          `<tr><td>${escapeHtml(t)}</td><td>${teamAdmin[t].count}</td><td>${fmtAvg(teamAdmin[t].totalSec, teamAdmin[t].count)}</td></tr>`
+        ).join('')}</tbody>
+      </table>`;
+
+    const summaryLines = ROSTER.map(name => {
+      const s = byAgent[name];
+      return `${name}: ${s.inbound.count} inbound (avg ${fmtAvg(s.inbound.totalSec, s.inbound.count)}), ${s.outbound.count} outbound (avg ${fmtAvg(s.outbound.totalSec, s.outbound.count)}), ACW avg ${fmtAvg(s.acw.totalSec, s.acw.count)}, ${s.admin.count} admin tasks avg ${fmtAvg(s.admin.totalSec, s.admin.count)}`;
+    }).join('\n');
+    const narrativePrompt = `You are summarizing a call center team's workforce data for a manager, covering: ${range === 'today' ? 'today' : range === 'week' ? 'the past week' : 'the past month'}.
+
+${summaryLines}
+
+Write a short (3-4 sentence) plain-text operational summary a manager could act on — call out the most notable pattern (e.g. unusually long ACW for someone, a high admin task load, an imbalance in inbound vs outbound), and one concrete suggestion. No markdown.`;
+    try {
+      const narrative = await sampleText(narrativePrompt);
+      document.getElementById('teamNarrative').innerHTML = `<div class="nb-label">Team Insight</div>${escapeHtml(narrative || 'Could not generate summary.')}`;
+    } catch (e) {
+      document.getElementById('teamNarrative').innerHTML = `<div class="nb-label">Team Insight</div>Could not generate summary.`;
+    }
+  } catch (err) {
+    console.error(err);
+    out.innerHTML = `<div class="empty-note">Could not load team report (${err && err.code ? err.code : 'unknown'}).</div>`;
+  }
+}
+
+/* =========================================================
+   Generate demo history (past 13 days, synthetic, no AI needed)
+   ========================================================= */
+document.getElementById('seedBtn').addEventListener('click', seedHistory);
+document.getElementById('clearBtn').addEventListener('click', clearAllShiftData);
+
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generateSyntheticDay(baseMs) {
+  const sessions = [];
+  let t = baseMs; // shift start, ms
+  const shiftEnd = baseMs + 8 * 3600 * 1000;
+  let adminCount = 0;
+
+  while (t < shiftEnd) {
+    const roll = Math.random();
+    let state, subtype, durSec;
+    if (roll < 0.38) {
+      state = 'inbound_call'; durSec = randInt(120, 540);
+    } else if (roll < 0.55) {
+      state = 'outbound_call'; durSec = randInt(90, 420);
+    } else if (roll < 0.72) {
+      state = 'after_call_work'; durSec = randInt(30, 150);
+    } else if (roll < 0.85 && adminCount < 5) {
+      state = 'administrative'; subtype = pick(ADMIN_TYPES); durSec = randInt(300, 900); adminCount++;
+    } else if (roll < 0.92) {
+      state = 'break'; durSec = 900; // 15 min
+    } else {
+      state = 'lunch'; durSec = 1800; // 30 min
+    }
+    sessions.push({ state, subtype: subtype || null, startMs: t, endMs: t + durSec * 1000, durationSec: durSec });
+    t += durSec * 1000;
+  }
+  return sessions;
+}
+
+async function seedHistory() {
+  const btn = document.getElementById('seedBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const log = document.getElementById('seedLog');
+  btn.disabled = true; clearBtn.disabled = true;
+  log.style.display = 'block'; log.innerHTML = '';
+
+  const db = await getDb();
+  if (!db) { log.innerHTML = '<div>Storage access isn\'t available in this view.</div>'; btn.disabled = false; clearBtn.disabled = false; return; }
+
+  const DAYS = 13;
+  let done = 0;
+  const total = ROSTER.length * DAYS;
+
+  for (const name of ROSTER) {
+    for (let i = 1; i <= DAYS; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(8, 0, 0, 0);
+      const dateStr = d.toISOString().slice(0, 10);
+      const sessions = generateSyntheticDay(d.getTime());
+
+      try {
+        await db.collection('shifts').doc(`${slug(name)}_${dateStr}`).set({ employeeName: name, date: dateStr, sessions });
+        done++;
+        const line = document.createElement('div');
+        line.textContent = `✓ ${name} — ${dateStr} (${sessions.length} sessions)`;
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+  const finalLine = document.createElement('div');
+  finalLine.innerHTML = `<strong>Done — ${done} of ${total} days seeded across the team.</strong>`;
+  log.appendChild(finalLine);
+  btn.disabled = false; clearBtn.disabled = false;
+}
+
+async function clearAllShiftData() {
+  const clearBtn = document.getElementById('clearBtn');
+  clearBtn.disabled = true; clearBtn.textContent = 'Clearing...';
+  const log = document.getElementById('seedLog');
+  log.style.display = 'block';
+  try {
+    const db = await getDb();
+    if (!db) throw { code: 'not_available' };
+    let count = 0;
+    for (const name of ROSTER) {
+      for (let i = 0; i <= 14; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().slice(0, 10);
+        try {
+          await db.collection('shifts').doc(`${slug(name)}_${dateStr}`).delete();
+          count++;
+        } catch (e) {}
+      }
+      try { await db.collection('status').doc(slug(name)).delete(); } catch (e) {}
+    }
+    log.innerHTML = `<div>✓ Cleared shift data (${count} day-records checked).</div>`;
+    Object.values(simTimers).forEach(id => clearTimeout(id));
+    simTimers = {};
+    initSimulation();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    clearBtn.disabled = false; clearBtn.textContent = 'Clear all shift data (including today)';
+  }
+}
+
+function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+
+/* =========================================================
+   Init
+   ========================================================= */
+initSimulation();
+refreshStatsOnly();
+setInterval(refreshStatsOnly, 6000);
+</script>
+</body>
+</html>
